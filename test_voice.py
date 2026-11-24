@@ -1,7 +1,6 @@
 """Simple voice recording test to verify microphone works."""
 
 import os
-from pathlib import Path
 
 try:
     import speech_recognition as sr

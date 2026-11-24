@@ -308,8 +308,8 @@ def train(
 
     raw_dataset = list(rows)
     dataset, duplicate_count = deduplicate_rows(raw_dataset)
-    texts = [text for text, _label in dataset]
-    labels = [label for _text, label in dataset]
+    texts = [text for text, _ in dataset]
+    labels = [label for _, label in dataset]
     if len(set(labels)) != 2:
         raise ValueError("Training data must contain both benign and malicious labels.")
     if len(dataset) < 20:

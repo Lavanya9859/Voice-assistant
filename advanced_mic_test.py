@@ -1,8 +1,5 @@
 """Advanced microphone tester to find working device."""
 
-import os
-import time
-
 try:
     import speech_recognition as sr
     import pyaudio

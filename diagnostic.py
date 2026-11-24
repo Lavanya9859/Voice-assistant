@@ -1,7 +1,5 @@
 """Diagnostic tool to test microphone and speech recognition."""
 
-import sys
-
 
 def test_pyaudio():
     """Test if PyAudio is installed and microphone is available."""
@@ -42,11 +40,11 @@ def test_speech_recognition():
         import speech_recognition as sr
         print("✓ SpeechRecognition is installed")
 
-        recognizer = sr.Recognizer()
+        sr.Recognizer()
         print(f"✓ Recognizer created")
 
         try:
-            with sr.Microphone() as source:
+            with sr.Microphone():
                 print("✓ Microphone detected and accessible")
                 return True
         except Exception as e:
@@ -55,21 +53,6 @@ def test_speech_recognition():
     except ImportError:
         print("❌ SpeechRecognition is NOT installed!")
         print("   Fix: pip install SpeechRecognition")
-        return False
-
-
-def test_google_api():
-    """Test if Google Speech Recognition API is accessible."""
-    print("\n🔍 Testing Google Speech Recognition API...")
-    try:
-        import speech_recognition as sr
-        recognizer = sr.Recognizer()
-
-        # Try a simple test without actual microphone input
-        print("✓ Google API is accessible (will be tested when you speak)\n")
-        return True
-    except Exception as e:
-        print(f"❌ API Error: {e}\n")
         return False
 
 
@@ -118,7 +101,7 @@ def main():
     results = {
         "PyAudio": test_pyaudio(),
         "SpeechRecognition": test_speech_recognition(),
-        "Google API": test_google_api(),
+        "Microphone and speech API": test_microphone_audio(),
     }
 
     print("\n" + "="*60)

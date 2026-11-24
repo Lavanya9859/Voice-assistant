@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import threading
 import tkinter as tk
 from tkinter import messagebox, scrolledtext, simpledialog
@@ -51,7 +50,7 @@ class StyledButton(tk.Button):
             padx=12,
             pady=8,
             cursor="hand2",
-            activebackground=self._darken(fg_color),
+            activebackground=fg_color,
             activeforeground=text_color,
             **kwargs,
         )
@@ -59,10 +58,6 @@ class StyledButton(tk.Button):
         self.bind("<Leave>", self._on_leave)
         self.base_bg = fg_color
         self.base_fg = text_color
-
-    def _darken(self, color):
-        # Simple darkening effect
-        return color
 
     def _on_enter(self, event):
         self.config(relief=tk.RAISED)

@@ -1,11 +1,9 @@
 """Record microphone input to file and check if speech is captured."""
 
 import os
-import wave
 
 try:
     import speech_recognition as sr
-    import pyaudio
 except ImportError:
     print("❌ Required libraries not installed")
     exit(1)

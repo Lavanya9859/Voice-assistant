@@ -1,200 +1,117 @@
 # Voice Assistant
 
-A Python-based voice assistant with a Tkinter desktop interface and a local ML security layer. It supports typed commands, microphone input, text-to-speech replies, basic web shortcuts, Wikipedia summaries, live weather lookup, and adversarial prompt-injection detection.
+A Python desktop assistant with a Tkinter interface for typed and spoken
+commands. The project combines deterministic command routing with optional
+speech recognition, text-to-speech, language-model responses, and an
+experimental local input-screening model.
 
 ![Voice Assistant screenshot](image.png)
 
-## Project Summary
+## Features
 
-This project implements a hybrid command-processing architecture: deterministic routing handles ordinary assistant capabilities, while a CPU-efficient local machine-learning security gate evaluates untrusted text before command execution. The security pipeline combines word and character TF-IDF features with balanced Logistic Regression, a deterministic structural validator, configurable thresholding, adversarial robustness evaluation, and runtime telemetry. The design prioritizes local processing, reproducibility, and auditable security decisions.
-
-## Key Features
-
-- Speech recognition for voice commands
+- Typed commands and microphone input
+- Time, date, weather, greeting, website, and Wikipedia commands
 - Text-to-speech responses
-- Tkinter GUI with typed input and continuous listening
-- Website shortcuts for common platforms
-- Time, date, weather, and greeting responses
-- Wikipedia summaries for quick information lookup
-- Local ML security gate for prompt injection and malicious command intent
-- Security telemetry: threat probability, latency, decision, and inference source
+- Optional local Whisper speech recognition
+- Optional LLM providers, configured through environment variables
+- Deterministic input validation and an optional trained scikit-learn model
 
-## Tech Stack
+## Requirements
 
-- Python
-- Tkinter
-- SpeechRecognition
-- pyttsx3
-- PyAudio
-- wikipedia
-- Open-Meteo API
-- scikit-learn
-- joblib
+- Python 3.10 or later
+- Internet access for weather, Wikipedia, Google speech recognition, training
+  data downloads, and optional hosted LLM providers
+- A working microphone for voice input; typed commands do not require one
 
-## Project Structure
+The Whisper model weights are downloaded the first time the app initializes
+local Whisper recognition. Allow extra startup time and disk space on that run.
 
-- `assistant_core.py` - main assistant logic and command handling
-- `gui_app.py` - Tkinter desktop application
-- `secure_assistant.py` - deterministic regex and sanitization baseline
-- `ml_security_engine.py` - local inference and fail-closed policy boundary
-- `train_model.py` - reproducible TF-IDF + Logistic Regression trainer
-- `requirements.txt` - package dependencies
-- `image.png` - project screenshot
+## Run the application
 
-## Setup
+Create and activate a virtual environment, then install the dependencies:
 
-1. Create and activate a virtual environment.
-2. Install the dependencies:
+```bash
+python -m venv .venv
+```
 
-   ```bash
-   pip install -r requirements.txt
-   ```
+Windows:
 
-3. Train the free local security model:
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
 
-   ```bash
-   python train_model.py --output models/security_model.pkl
-   ```
+macOS or Linux:
 
-   The default trainer downloads the open `deepset/prompt-injections` dataset
-   through the public Hugging Face Datasets Server. This requires no account
-   or API key. The legacy UCI SMS corpus is available only as an explicit
-   proxy baseline with `--uci-baseline`; it should not support claims about
-   prompt-injection detection.
+```bash
+source .venv/bin/activate
+```
 
-   You can provide a domain-specific CSV instead:
+Install dependencies and launch the desktop app:
 
-   ```bash
-   python train_model.py --csv data/prompt_injection.csv --output models/security_model.pkl
-   ```
+```bash
+python -m pip install -r requirements.txt
+python gui_app.py
+```
 
-   The CSV must contain `text` and `label` columns. Accepted labels include
-   `benign`, `ham`, `safe`, `malicious`, `spam`, `injection`, and `attack`.
+The app can run without a trained security model. In that case it uses the
+deterministic validator and reports `lexical_fallback` as the decision source.
+To train and save the optional local model:
 
-   Training prints a classification report, ROC-AUC, average precision, a
-   threshold calibrated on a separate split, and a deterministic perturbation
-   evaluation. It also writes a machine-readable report to
-   `reports/security_evaluation.json`, including duplicate handling and
-   word-only, character-only, and combined-feature ablations. The default
-   `--max-fnr 0.02` constrains the calibration
-   false-negative rate to at most two percent where the calibration sample
-   permits a feasible threshold.
+```bash
+python train_model.py --output models/security_model.pkl
+```
 
-4. Run the desktop app:
+The default training command downloads a public prompt-injection dataset and
+therefore requires internet access. You can also supply a CSV with `text` and
+`label` columns:
 
-   ```bash
-   python gui_app.py
-   ```
+```bash
+python train_model.py --csv data/prompt_injection.csv --output models/security_model.pkl
+```
 
-## Example Commands
+Model artifacts and evaluation reports are local outputs and are excluded from
+version control.
 
-- `time` - tells the current time
-- `date` - tells the current date
-- `open youtube` - opens YouTube
-- `open google` - opens Google
-- `open github` - opens GitHub
-- `open leetcode` - opens LeetCode
-- `search wikipedia python` - shows a short Wikipedia summary
-- `weather in london` - gets the current weather for London
-- `show weather for delhi` - gets the current weather for Delhi
-- `exit` or `quit` - closes the assistant
+## Configuration
 
-## Notes for Use
+Copy `.env.example` to `.env` to configure an optional LLM provider. Keep real
+API keys in `.env` or environment variables; never commit them. See
+[LLM setup](LLM_SETUP.md) for provider-specific notes.
 
-- The assistant uses deterministic command routing together with a local TF-IDF and Logistic Regression security classifier; no commercial AI inference API is required.
-- Microphone input requires `SpeechRecognition` and `PyAudio`.
-- Weather lookup needs internet access because it uses the Open-Meteo API.
-- If voice input is not available, the text box still works.
-- If the model artifact is unavailable, the application uses the deterministic
-   regex validator and labels telemetry as `lexical_fallback`.
+## Tests
 
-## ML Security Design
-
-The security boundary runs before command routing for both typed and
-recognized speech. This **Fail-Closed System Topology** combines word TF-IDF
-bigrams with character TF-IDF 3-to-5-grams, then applies balanced Logistic
-Regression locally on the CPU. Character features preserve evidence across
-inserted spaces and punctuation.
-
-The constructor default decision threshold is `0.70`; a trained artifact can
-replace it with a threshold selected through **Precision-Recall Optimization**
-under an explicit false-negative-rate constraint. Inputs matching the
-deterministic baseline are blocked immediately; model probability at or above
-the calibrated threshold is also blocked. Model loading or inference failures
-fail closed. The GUI logs the decision, probability percentage, processing
-latency, and inference source for each turn.
-
-When a trained artifact contains a calibrated threshold, it overrides the
-constructor default. Blocked model decisions include the highest positive
-linear TF-IDF feature contributions as **Post-Hoc Feature Attribution**
-evidence, while regex-blocked inputs report the matched structural rule. This
-is local model evidence, not a causal explanation.
-
-The trainer performs **Adversarial Robustness Evaluation** using deterministic
-perturbations, including whitespace insertion, zero-width characters, and
-leetspeak substitutions. Clean and perturbed test performance must be
-reported separately; strong clean-set scores do not establish robustness
-against adaptive or distribution-shifted attacks.
-
-The UCI SMS corpus is only a baseline proxy and should not support claims
-about general prompt-injection robustness. For an internship-quality study,
-create a labeled CSV from freely accessible prompt-injection datasets on
-Kaggle or UCI, define a taxonomy such as `benign`, `instruction_override`,
-`system_prompt_exfiltration`, `shell_injection`, and `sql_injection`, and use
-an untouched assistant-specific test split. Report class-wise precision,
-recall, F1, macro-F1, confusion matrices, threshold curves, and latency.
-
-The serialized scikit-learn artifact is loaded with `joblib`. Only load model
-files generated by your own trusted training process; serialized Python
-objects are not safe to load from untrusted sources.
-
-## Empirical Security Contribution & Research Value
-
-This repository presents an empirical, locally deployable security prototype
-for an interactive command interface. Its research value is grounded in:
-
-- a working desktop interface with typed and speech-mediated inputs
-- structural data lineage from dataset source through feature extraction,
-   calibration, serialization, and runtime enforcement
-- a deterministic validator baseline for interpretable attack interception
-- combined word and character n-gram modeling for lexical and obfuscation-aware
-   signal capture
-- **Precision-Recall Optimization** with an explicit false-negative error
-   boundary
-- **Adversarial Robustness Evaluation** on deterministic input perturbations
-- **Post-Hoc Feature Attribution** for auditable local model evidence
-- **Fail-Closed System Topology** for model absence, loading failure, and
-   inference failure
-- reproducible CPU-based experimentation with `random_state=42`
-
-The UCI SMS corpus is retained only as an explicitly identified proxy baseline;
-the default training path uses an open prompt-injection dataset. Publication-
-quality claims still require domain-specific labels, duplicate controls,
-versioned data provenance, untouched test data, confidence intervals, and
-evaluation against adaptive attackers.
-
-## Reproducible evaluation
-
-The training command uses a fixed random seed (`42`), removes exact
-case/whitespace duplicates before splitting, keeps separate fit, calibration,
-and test partitions, and writes JSON metrics. The report contains accuracy,
-class-wise precision/recall/F1, macro-F1, confusion matrices, ROC-AUC, average
-precision, and ablations for word-only, character-only, and combined features.
-
-Run the security regression tests with:
+Run the automated security regression tests with:
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-These tests verify the deterministic policy boundary, explicit lexical
-fallback behavior, model thresholding, and fail-closed handling of inference
-errors. The evaluation remains a prototype benchmark: a research claim should
-add an untouched external test set, near-duplicate detection, repeated seeds,
-confidence intervals, and adaptive multilingual attacks.
+The microphone scripts in the repository are manual hardware diagnostics and
+are not part of this automated test suite.
 
-## Version Control Hygiene
+## Project layout
 
-- Keep `.venv` and `__pycache__` out of the repository.
-- Commit only the source code, documentation, and dependency files.
-- Use descriptive commit messages for future changes.
+| Path | Purpose |
+| --- | --- |
+| `assistant_core.py` | Command routing, weather lookup, and assistant responses |
+| `gui_app.py` | Tkinter desktop interface |
+| `secure_assistant.py` | Deterministic input validation |
+| `ml_security_engine.py` | Optional local model inference and policy decisions |
+| `train_model.py` | Dataset loading, training, calibration, and evaluation |
+| `llm_engine.py` | Optional provider-backed responses and local fallback |
+| `whisper_recognizer.py` | Speech recognition integration |
+| `tests/` | Automated regression tests |
+| `diagnostic.py`, `check_audio.py`, `advanced_mic_test.py`, `test_voice.py` | Manual microphone diagnostics |
+| `pdtrain.yaml` | External training configuration; not read by the local trainer |
+
+## Limitations
+
+This is a learning and portfolio project, not a production security boundary.
+The validator and classifier can produce false positives and false negatives;
+they do not replace authorization, sandboxing, or human review. Only load
+serialized model files produced by a trusted training process.
+Optional hosted LLM integrations depend on external SDKs and model availability
+and are not covered by the automated tests.
+
+For microphone setup, see [Microphone troubleshooting](MICROPHONE_TROUBLESHOOTING.md).
+For a short run-through, see the [Quick Start](QUICKSTART.md).
